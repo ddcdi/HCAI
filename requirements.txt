@@ -75,7 +75,7 @@ pytest==6.2.3
 pluggy==1.0.0
 python-lsp-server==1.11.0
 spyder==4.2.5
-pyqt5==5.12.3
+pyqt5==5.15.11
 pyqtwebengine==5.12.1
 
 jinja2>=3.0

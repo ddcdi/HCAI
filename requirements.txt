@@ -16,7 +16,6 @@ gTTS==2.5.2
 huggingface-hub==0.23.5
 idna==3.7
 importlib_resources==6.4.0
-Jinja2==3.1.4
 jsonpatch==1.33
 jsonpointer==3.0.0
 jsonschema==4.23.0
@@ -24,14 +23,12 @@ jsonschema-specifications==2023.12.1
 langchain-core==0.2.21
 langsmith==0.1.90
 markdown-it-py==3.0.0
-MarkupSafe==2.1.5
 mdurl==0.1.2
 mpmath==1.3.0
 networkx==3.1
 numpy==1.24.4
 orjson==3.10.6
 packaging==24.1
-pandas==2.0.3
 pillow==10.4.0
 pkgutil_resolve_name==1.3.10
 protobuf==5.27.2
@@ -73,3 +70,8 @@ tzdata==2024.1
 urllib3==2.2.2
 uuid==1.30
 zipp==3.19.2
+Jinja2<3.0,>=2.3
+MarkupSafe<2.0
+pandas~=1.3
+pyqt5<5.13
+pyqtwebengine<5.13

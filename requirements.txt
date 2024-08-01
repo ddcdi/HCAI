@@ -73,3 +73,4 @@ tzdata==2024.1
 urllib3==2.2.2
 uuid==1.30
 zipp==3.19.2
+portaudio

@@ -82,3 +82,4 @@ jinja2>=3.0
 markupsafe>=2.0
 nbconvert==7.16.4
 sphinx==7.1.2
+pip==24.2

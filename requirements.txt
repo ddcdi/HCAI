@@ -1,6 +1,6 @@
 streamlit
 transformers
-langchain_core.messages
+langchain_core
 torch
 uuid
 gtts

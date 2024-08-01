@@ -1,5 +1,5 @@
-# Python 3.11 이미지를 기반으로 합니다.
-FROM python:3.11-slim
+# Python 3.9 이미지를 기반으로 합니다.
+FROM python:3.9-slim
 
 # 필요한 시스템 패키지 설치
 RUN apt-get update && apt-get install -y \

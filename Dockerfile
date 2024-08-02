@@ -27,6 +27,6 @@ COPY .streamlit/config.toml /root/.streamlit/config.toml
 # 환경 변수 설정 (기본 포트 설정)
 ENV PORT=8501
 
-# 컨테이너 실행 명령어
-CMD ["streamlit", "run", "app.py", "--server.port", "8501", "--server.address", "0.0.0.0"]
+CMD ["streamlit", "run", "app.py", "--server.port", "8501", "--server.address", "0.0.0.0", "--config", "/root/.streamlit/config.toml"]
+
 

@@ -8,3 +8,4 @@ sounddevice
 setuptools==72.1.0
 wave==0.0.2
 SpeechRecognition==3.10.4
+pyaudio

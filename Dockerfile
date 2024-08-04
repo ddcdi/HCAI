@@ -1,21 +1,31 @@
 # 베이스 이미지 선택
 FROM python:3.12.4
 
-# 시스템 패키지 업데이트 및 portaudio와 관련 패키지 설치
-RUN apt-get update \
-        && apt-get install portaudio19-dev -y \
-        && pip3 install pyaudio
+# 필요한 패키지 업데이트 및 설치
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    file \
+    git \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get -y update
-RUN apt-get -y upgrade
+# Homebrew 설치
+RUN /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)
 
-RUN pip install --upgrade pip
+# Homebrew 환경 변수 설정
+ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
+ENV PATH="/root/.linuxbrew/bin:/root/.linuxbrew/sbin:${PATH}"
+
+# Homebrew 업데이트 및 필수 패키지 설치
+RUN brew update && \
+    brew install portaudio
+
+# pip를 통한 pyaudio 설치
+RUN pip install pyaudio
 
 # 작업 디렉토리 설정
 WORKDIR /app
-
-# 필요 시, 필요한 다른 시스템 패키지 설치
-# RUN apt-get install -y <other-packages>
 
 # 필요한 Python 패키지 설치
 COPY requirements.txt requirements.txt

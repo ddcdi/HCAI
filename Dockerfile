@@ -12,10 +12,11 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # pip를 통한 pyaudio 설치
-RUN pip install pyaudio
+RUN pip install streamlit pyaudio
 
-# Streamlit 설정 파일 복사
-COPY config.toml /root/.streamlit/config.toml
+# Streamlit 설정 디렉토리 생성 및 설정 파일 복사
+RUN mkdir -p /root/.streamlit
+COPY .streamlit/config.toml /root/.streamlit/config.toml
 
 # 작업 디렉토리 설정
 WORKDIR /app
@@ -29,5 +30,6 @@ COPY . .
 
 # 기본 명령어 설정 (예: Streamlit 애플리케이션 실행)
 CMD ["streamlit", "run", "app.py"]
+
 
 

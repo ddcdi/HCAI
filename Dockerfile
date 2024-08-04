@@ -7,19 +7,28 @@ RUN apt-get update && apt-get install -y \
     curl \
     file \
     git \
+    sudo \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Homebrew 사용자 생성 및 홈 디렉토리 설정
+RUN useradd -m -s /bin/bash brewuser
+
+# brewuser로 전환
+USER brewuser
+WORKDIR /home/brewuser
 
 # Homebrew 설치
 RUN /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 # Homebrew 환경 변수 설정
-ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
-ENV PATH="/root/.linuxbrew/bin:/root/.linuxbrew/sbin:${PATH}"
+ENV PATH="/home/brewuser/.linuxbrew/bin:/home/brewuser/.linuxbrew/sbin:${PATH}"
 
 # Homebrew 업데이트 및 필수 패키지 설치
-RUN brew update && \
-    brew install portaudio
+RUN brew update && brew install portaudio
+
+# 루트 사용자로 전환
+USER root
 
 # pip를 통한 pyaudio 설치
 RUN pip install pyaudio
@@ -36,3 +45,4 @@ COPY . .
 
 # 기본 명령어 설정 (예: Streamlit 애플리케이션 실행)
 CMD ["streamlit", "run", "app.py"]
+

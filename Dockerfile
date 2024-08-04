@@ -14,6 +14,9 @@ RUN apt-get update && apt-get install -y \
 # Homebrew 사용자 생성 및 홈 디렉토리 설정
 RUN useradd -m -s /bin/bash brewuser
 
+# Homebrew 설치 디렉토리 생성 및 권한 설정
+RUN mkdir -p /home/linuxbrew/.linuxbrew && chown -R brewuser:brewuser /home/linuxbrew/.linuxbrew
+
 # brewuser로 전환
 USER brewuser
 WORKDIR /home/brewuser
@@ -45,4 +48,5 @@ COPY . .
 
 # 기본 명령어 설정 (예: Streamlit 애플리케이션 실행)
 CMD ["streamlit", "run", "app.py"]
+
 

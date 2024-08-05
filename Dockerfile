@@ -27,6 +27,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # 애플리케이션 파일 복사
 COPY main_page.py .
+COPY utils.py .
+COPY page/ ./page
 
 # 기본 명령어 설정 (예: Streamlit 애플리케이션 실행)
 CMD ["streamlit", "run", "main_page.py"]

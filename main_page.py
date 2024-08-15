@@ -8,6 +8,7 @@ from gtts import gTTS
 import sounddevice as sd
 import wave
 import speech_recognition as sr
+from PIL import Image
 
 st.title("동화만들기 🎈")
 st.markdown("원하는 주제로 동화를 작성해주는 AI")
@@ -24,8 +25,6 @@ print(select_language)
 utils.session_state_set()
 
 print("세션 ID : ",st.session_state.session_id)
-
-prompt = ""
 
 # 디바이스 설정
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -44,12 +43,13 @@ if (topic=="과일"):
         st.session_state.prompt = text
         print(f"프롬프트 : {prompt}")
 elif (topic=="캐릭터"):
-    prompt = st.text_input('원하는 캐릭터를 작성해봐',placeholder = '뽀로로,또봇,미미...')
+    st.session_state.prompt = st.text_input('원하는 캐릭터를 작성해봐',placeholder = '뽀로로,또봇,미미...')
+
+    # 이미지로 꾸미기
+    st.image('test_image.png',width=50)
+
 elif (topic=="동물"):
-    prompt = st.text_input('원하는 동물을 작성해봐',placeholder ='강아지,고양이,토끼...')
-    
-if prompt:
-    st.session_state.prompt = True
+    st.session_state.prompt = st.text_input('원하는 동물을 작성해봐',placeholder ='강아지,고양이,토끼...')
 
 if st.session_state.prompt:
     if st.button("시작", type="primary"):
@@ -145,3 +145,4 @@ if st.session_state["started"]:
 
 else:
     st.markdown("작성을 완료하고 시작 버튼을 눌러주세요")
+

@@ -7,7 +7,7 @@ from gtts import gTTS
 import sounddevice as sd
 import wave
 import speech_recognition as sr
-
+from streamlit_extras.let_it_rain import rain
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -192,3 +192,12 @@ def save_text_to_file(text, filename="recognized_text.txt"):
     with open(filename, "w", encoding="utf-8") as file:
         file.write(text)
     st.write(f"Text saved to {filename}")
+
+# 이모지 rain 함수
+def print_emoji(Emoji):
+    rain(
+        emoji=Emoji,
+        font_size=54,
+        falling_speed=5,
+        animation_length="infinite",
+    )

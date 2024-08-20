@@ -9,6 +9,7 @@ import sounddevice as sd
 import wave
 import speech_recognition as sr
 from PIL import Image
+from streamlit_extras.let_it_rain import rain
 
 st.title("동화만들기 🎈")
 st.markdown("원하는 주제로 동화를 작성해주는 AI")
@@ -37,18 +38,22 @@ topic = st.selectbox(
 )
 
 if (topic=="과일"):
+    utils.print_emoji("🍎")
     if st.button("버튼을 누르고 말해보세요",help="사과,바나나,수박..."):
         audio_file = utils.record_audio()
         text = utils.recognize_speech(audio_file)
         st.session_state.prompt = text
-        print(f"프롬프트 : {prompt}")
+        print(f"프롬프트 : {st.session_state.prompt}")
+    
 elif (topic=="캐릭터"):
+    utils.print_emoji("🦄")
     st.session_state.prompt = st.text_input('원하는 캐릭터를 작성해봐',placeholder = '뽀로로,또봇,미미...')
 
     # 이미지로 꾸미기
-    st.image('test_image.png',width=50)
+    # st.image('test_image.png',width=50)
 
 elif (topic=="동물"):
+    utils.print_emoji("🐶")
     st.session_state.prompt = st.text_input('원하는 동물을 작성해봐',placeholder ='강아지,고양이,토끼...')
 
 if st.session_state.prompt:

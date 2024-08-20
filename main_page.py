@@ -111,17 +111,18 @@ if st.session_state["started"]:
             st.write(user_input)
 
         # 모델 불러오기
-        with st.spinner("열심히 동화를 만들고 있는중..."):
+        with st.spinner("AI 부르는중"):
             if "tokenizer" not in st.session_state or "model" not in st.session_state:
                 try:
                     st.session_state["tokenizer"], st.session_state["model"] = utils.load_model()
+                    st.success('AI를 부르는데 성공했습니다!',icon='✅')
                 except Exception as e:
                     st.error(f"모델을 불러오는 중 오류가 발생했습니다: {e}")
                     st.stop()
         
         # 답변 생성
         with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
+            with st.spinner("열심히 동화를 만들고 있는중..."):
                 try:
                     response = utils.generate_text(
                         user_input, st.session_state["tokenizer"], st.session_state["model"]
@@ -130,6 +131,7 @@ if st.session_state["started"]:
                     
                     # 답변 음성 파일로 재생
                     utils.generate_audio(response,select_language)
+                    st.success('AI와 함께 멋진 동화를 만들었어요!')
                 except Exception as e:
                     st.error(f"응답 생성 중 오류가 발생했습니다: {e}")
                     st.stop()
@@ -150,4 +152,5 @@ if st.session_state["started"]:
 
 else:
     st.markdown("작성을 완료하고 시작 버튼을 눌러주세요")
+
 

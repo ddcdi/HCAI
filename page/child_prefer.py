@@ -49,8 +49,11 @@ if not st.session_state.question_complete :
             st.write(gpt_response)  # 첫 번째 질문 출력
 
     # 음성 녹음
-    utils.record_audio(duration=5, fs=44100, filename="output.wav")
-    user_input = utils.recognize_speech("output.wav")
+    audio_file = utils.record_audio(duration=5, fs=44100, filename="output.wav")
+    while not audio_file:
+        audio_file = utils.record_audio(duration=5, fs=44100, filename="output.wav")
+        
+    user_input = utils.recognize_speech(audio_file)
     # user_input = st.text_input("답변을 입력하세요:")
     
     if user_input:

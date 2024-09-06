@@ -1,156 +1,86 @@
 import streamlit as st
-import utils
-import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
-from langchain_core.messages import ChatMessage
-import json
-from gtts import gTTS
-import sounddevice as sd
-import wave
-import speech_recognition as sr
-from PIL import Image
-from streamlit_extras.let_it_rain import rain
+from langchain import LLMChain
+from langchain.llms import OpenAI
+import re
 
-st.title("동화만들기 🎈")
-st.markdown("원하는 주제로 동화를 작성해주는 AI")
+# Streamlit 앱 제목
+st.title("다문화가정 아동 부모 상담 챗봇")
 
-# 언어 설정
-select_language = st.sidebar.selectbox(
-    "이중 언어 설정",
-    ("영어","러시아어","중국어","일어")
-)
-
-print(select_language)
+# OpenAI API 키 설정
+openai_api_key = 'YOUR_API_KEY'
+llm = OpenAI(openai_api_key=openai_api_key, model="gpt-3.5-turbo")
 
 # 세션 상태 변수 초기화
-utils.session_state_set()
+if 'messages' not in st.session_state:
+    st.session_state.messages = []
 
-print("세션 ID : ",st.session_state.session_id)
+if 'question_complete' not in st.session_state:
+    st.session_state.question_complete = False
 
-# 디바이스 설정
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+if 'parent_prefer' not in st.session_state:
+    st.session_state.parent_prefer = None
 
-topic = st.selectbox(
-    "주제를 골라봐",
-    ["과일","캐릭터","동물"],
-    placeholder="원하는 주제 선택하기",
-    index= None
-)
+# 프롬프트 초기화
+if 'prompt' not in st.session_state:
+    st.session_state.prompt = '''
+    너는 다문화가정 아동들의 부모와 대화하는 챗봇이야. 순서대로 5가지 질문을 하나씩 해줘. 부모가 답변하면 그 다음에 질문을 해. 
 
-if (topic=="과일"):
-    utils.print_emoji("🍎")
-    if st.button("버튼을 누르고 말해보세요",help="사과,바나나,수박..."):
-        audio_file = utils.record_audio()
-        text = utils.recognize_speech(audio_file)
-        st.session_state.prompt = text
-        print(f"프롬프트 : {st.session_state.prompt}")
-    
-elif (topic=="캐릭터"):
-    utils.print_emoji("🦄")
-    st.session_state.prompt = st.text_input('원하는 캐릭터를 작성해봐',placeholder = '뽀로로,또봇,미미...')
+    1. 부모의 출신국가 
+    2. 아동 나이 
+    3. 자녀가 한국어와 부모의 출신국가 언어 중 어느 것을 더 어려워하는지 
+    4. 부모가 자녀가 배웠으면 하는 언어 표현이 있는지 
+    5. 부모가 자녀에게 알려주고 싶은 문화, 풍습, 단어, 설화 등의 문화적 요소가 있는지 
 
-    # 이미지로 꾸미기
-    # st.image('test_image.png',width=50)
+    2번 질문부터는 부모의 출신국가 언어로도 번역해줘. 
+    아동의 나이가 0~3세이면 영아로 정리해줘. 
+    아동의 나이가 4세~7세 이상이면 유아로 정리해줘. 
+    5번의 답변을 듣고 답변에 대해 너가 이해한대로 설명해줘. 만일 사용자가 아니라고 하면, 다시 이해하고 맞는지 질문해.
+    5번의 답변이 끝나면 다음과 같은 형식으로 예시처럼 정리해줘. 
 
-elif (topic=="동물"):
-    utils.print_emoji("🐶")
-    st.session_state.prompt = st.text_input('원하는 동물을 작성해봐',placeholder ='강아지,고양이,토끼...')
+    형식: {(1)의 답변, (2)의 답변, (3)에 답변하지 않은 언어, (3)의 답변, (4)의 답변, (5)의 답변} 
+    예시: {캐나다, 유아, 한국어, 영어, 날씨에 대한 표현, 아이스 하키}
+    '''
 
-if st.session_state.prompt:
-    if st.button("시작", type="primary"):
-        st.session_state["started"] = True
+# 사용자 입력 처리
+if not st.session_state.question_complete:
+    # 질문이 있는 경우
+    if len(st.session_state.messages) == 0:
+        # 첫 번째 질문 생성
+        response = llm(st.session_state.prompt)
+        gpt_response = response.strip()
 
-if st.session_state["started"]:
-    
-    # 이전 대화 저장 및 출력
-    utils.messages_save()
-
-    # 질문 받기
-    if st.session_state.prompt and not st.session_state.select:
-        user_input = st.session_state.prompt
-        print(f"user_input : {user_input}")
-        user_message = ChatMessage(role="user", content=user_input)
-        st.session_state["messages"].append(user_message)
-        
-        with st.chat_message("user"):
-            st.write(user_input)
-
-        # 모델 불러오기
-        with st.spinner("열심히 동화를 만들고 있는중..."):
-            if "tokenizer" not in st.session_state or "model" not in st.session_state:
-                try:
-                    st.session_state["tokenizer"], st.session_state["model"] = utils.load_model()
-                except Exception as e:
-                    st.error(f"모델을 불러오는 중 오류가 발생했습니다: {e}")
-                    st.stop()
-        
-        # 답변 생성
+        st.session_state.messages.append({"role": "assistant", "content": gpt_response})
         with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
-                try:
-                    response = utils.generate_text(
-                        user_input, st.session_state["tokenizer"], st.session_state["model"]
-                    )
-                    st.markdown(response)
-                except Exception as e:
-                    st.error(f"응답 생성 중 오류가 발생했습니다: {e}")
-                    st.stop()
-        
-        assistant_message = ChatMessage(role="assistant", content=response)
-        st.session_state["messages"].append(assistant_message)
-        st.session_state.select = True
+            st.write(gpt_response)  # 첫 번째 질문 출력
+
+    user_input = st.text_input("답변을 입력하세요:")
     
-    # 이미 주제를 선택했을때
-    elif st.session_state.prompt:
-        user_input = st.chat_input("원하신걸 말씀해보세요")
+    if user_input:
+        # 사용자 응답 저장
+        st.session_state.messages.append({"role": "user", "content": user_input})
 
-        user_message = ChatMessage(role="user", content=user_input)
-        st.session_state["messages"].append(user_message)
-        
-        with st.chat_message("user"):
-            st.write(user_input)
+        # 다음 질문 생성
+        response = llm(st.session_state.prompt + "\n" +"\n".join([msg['content'] for msg in st.session_state.messages]))
+        gpt_response = response.strip()
 
-        # 모델 불러오기
-        with st.spinner("AI 부르는중"):
-            if "tokenizer" not in st.session_state or "model" not in st.session_state:
-                try:
-                    st.session_state["tokenizer"], st.session_state["model"] = utils.load_model()
-                    st.success('AI를 부르는데 성공했습니다!',icon='✅')
-                except Exception as e:
-                    st.error(f"모델을 불러오는 중 오류가 발생했습니다: {e}")
-                    st.stop()
-        
-        # 답변 생성
-        with st.chat_message("assistant"):
-            with st.spinner("열심히 동화를 만들고 있는중..."):
-                try:
-                    response = utils.generate_text(
-                        user_input, st.session_state["tokenizer"], st.session_state["model"]
-                    )
-                    st.markdown(response)
-                    
-                    # 답변 음성 파일로 재생
-                    utils.generate_audio(response,select_language)
-                    st.success('AI와 함께 멋진 동화를 만들었어요!')
-                except Exception as e:
-                    st.error(f"응답 생성 중 오류가 발생했습니다: {e}")
-                    st.stop()
-                
-        
-        assistant_message = ChatMessage(role="assistant", content=response)
-        st.session_state["messages"].append(assistant_message)
+        st.session_state.messages.append({"role": "assistant", "content": gpt_response})
 
-    # 메시지를 json 파일로 저장하는 버튼
-    if st.button("종료"):
-        st.session_state.check = True
+        # 답변의 마지막이 }로 끝나면 질문 완료
+        if gpt_response.strip().endswith('}'):
+            st.session_state.question_complete = True
+            # 중괄호 안의 내용 추출
+            match = re.search(r'\{(.*?)\}', gpt_response.strip())
+            if match:
+                parent_prefer = match.group(1)  # 중괄호 안의 내용을 가져옴
+                st.session_state.parent_prefer = parent_prefer
+                print("결과:", st.session_state.parent_prefer)
 
-    if st.session_state.check :
-        filename = st.session_state.session_id+".json"
-        with open(filename, 'w', encoding='utf-8') as f:
-            json.dump([utils.chat_message_to_dict(message) for message in st.session_state["messages"]], f, ensure_ascii=False, indent=4)
-        st.success("성공적으로 종료했습니다!!")
+        # 대화 내용 출력
+        for message in st.session_state["messages"]:
+            with st.chat_message(message['role']):
+                st.write(message['content'])
 
-else:
-    st.markdown("작성을 완료하고 시작 버튼을 눌러주세요")
-
-
+# 모든 질문이 끝난 경우 결과 출력
+if st.session_state.question_complete:
+    st.write("모든 질문이 완료되었습니다. 결과를 정리합니다. 다음 버튼을 눌러주세요.")
+    st.page_link("pages/child_prefer.py", label="아동 선호도", icon="1️⃣")

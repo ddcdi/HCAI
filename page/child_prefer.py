@@ -50,11 +50,10 @@ if not st.session_state.question_complete :
 
     # 음성 녹음
     audio_file = utils.record_audio(duration=5, fs=44100, filename="output.wav")
-    while not audio_file:
-        audio_file = utils.record_audio(duration=5, fs=44100, filename="output.wav")
-        
-    user_input = utils.recognize_speech(audio_file)
-    # user_input = st.text_input("답변을 입력하세요:")
+    if audio_file:
+        user_input = utils.recognize_speech(audio_file)
+    else :
+        user_input = st.text_input("답변을 입력해주세요! :")
     
     if user_input:
         # 사용자 응답 저장

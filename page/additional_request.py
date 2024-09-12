@@ -104,9 +104,15 @@ if st.session_state.first_tale:
 if st.session_state.final_tale:
     # 대화 내용 출력
     for message in st.session_state["messages"]:
-        with st.chat_message(message.role):
-            st.write(message.content)
-            utils.generate_audio(message.content,select_language=)
+        if message.role == "assistant":
+            with st.chat_message(message.role):
+                # 텍스트 출력
+                st.write(message.content)
+                # 음성 출력
+                utils.generate_audio(message.content,select_language=)
+        # 이미지 출력
+        elif message.role == "image":
+            st.image(message.content,use_column_width=True)
 
     # 메시지를 json 파일로 저장하는 버튼
     if st.button("종료"):

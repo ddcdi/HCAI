@@ -1,6 +1,9 @@
 import streamlit as st
 from langchain import LLMChain
 from langchain.llms import OpenAI
+import sounddevice as sd
+import wave
+import speech_recognition as sr
 import re
 
 # Streamlit 앱 제목
@@ -9,6 +12,10 @@ st.title("다문화가정 아동 자녀 상담 챗봇")
 # OpenAI API 키 설정
 openai_api_key = 'YOUR_API_KEY'
 llm = OpenAI(openai_api_key=openai_api_key, model="gpt-3.5-turbo")
+
+# 사용 가능한 채널 수 확인
+device_info = sd.query_devices(kind='input')
+channels = device_info['max_input_channels']  # 사용 가능한 최대 입력 채널 수
 
 # 세션 상태 변수 초기화
 if 'messages' not in st.session_state:

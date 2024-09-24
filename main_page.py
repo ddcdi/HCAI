@@ -1,7 +1,8 @@
 import streamlit as st
-from langchain import LLMChain
-from langchain.llms import OpenAI
+from langchain.chains import LLMChain
+from langchain_community.llms import OpenAI
 import re
+import utils
 
 # Streamlit 앱 제목
 st.title("다문화가정 아동 부모 상담 챗봇")
@@ -19,6 +20,14 @@ if 'question_complete' not in st.session_state:
 
 if 'parent_prefer' not in st.session_state:
     st.session_state.parent_prefer = None
+
+if 'select_language' not in st.session_state:
+    st.session_state.select_language = False
+
+if not st.session_state.select_language:
+    # 음성에 나올 언어 선택
+    select_language = st.selectbox('동화를 읽어줄 언어를 선택해주세요',('영어','중국어','일본어'))
+    st.session_state.select_language = utils.language_convert(select_language)
 
 # 프롬프트 초기화
 if 'prompt' not in st.session_state:

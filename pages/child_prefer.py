@@ -1,10 +1,11 @@
 import streamlit as st
-from langchain import LLMChain
-from langchain.llms import OpenAI
 import sounddevice as sd
 import wave
 import speech_recognition as sr
+from langchain.chains import LLMChain
+from langchain_community.llms import OpenAI
 import re
+import utils
 
 # Streamlit 앱 제목
 st.title("다문화가정 아동 자녀 상담 챗봇")

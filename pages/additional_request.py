@@ -1,6 +1,6 @@
 import streamlit as st
-from langchain import LLMChain
-from langchain.llms import OpenAI
+from langchain.chains import LLMChain
+from langchain_community.llms import OpenAI
 import re
 import json
 import utils
@@ -109,7 +109,7 @@ if st.session_state.final_tale:
                 # 텍스트 출력
                 st.write(message.content)
                 # 음성 출력
-                utils.generate_audio(message.content,select_language=)
+                utils.generate_audio(message.content,select_language=st.session_state.select_language)
         # 이미지 출력
         elif message.role == "image":
             st.image(message.content,use_column_width=True)

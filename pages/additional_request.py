@@ -65,33 +65,20 @@ if st.session_state.first_tale:
 
     if 'prompt_add' not in st.session_state:
         st.session_state.prompt_add =f'''
-        1. 새로운 캐릭터와 추가하여 상호작용 요청
-        현재 이야기는 일반적이고 지루해. 새로운 캐릭터를 추가하여 상호작용해서 이야기를 더 흥미롭게 만들 수 있어. 이야기를 더 흥미롭게 만들어줘.
-        현재 이야기: {st.session_state.first_tale}
-
-        2. 새로운 사건 추가하여 흥미 증진
-        현재 이야기는 보편적이고 따분해. 새로운 사건을 추가해 이야기를 매력적으로 만들 수 있어. 이야기를 더 매력적이게 만들어줘. 
-        현재 이야기: {st.session_state.first_tale}
-
-        3. 부모가 요청한 표현 강조 
-        현재 이야기에서 {st.session_state}에 대해 더 강조해줘. {{표현}}과 관련된 단어의 사용을 늘려서 더 강조할 수 있어. 
-        현재 이야기: {st.session_state.first_tale}
-
-        4. 부모가 요청한 문화 강조
-        현재 이야기에서 부모의 선호 요소 중 {{문화}}에 대해 더 강조해줘. {{문화}}에 대한 설명을 강화해서 더 강조할 수 있어. 
-        현재 이야기: {st.session_state.first_tale}
-
-        5. 이야기 구성에 대한 설명 삭제
-        현재 이야기에서 이야기의 구성에 대한 설명을 삭제해줘.
-        현재 이야기: {st.session_state.first_tale}
-
-        6. 제 2언어로 출력
-        현재 이야기를 제 2언어로 출력해줘. 
-        현재 이야기: {st.session_state.first_tale}
-
-        7. 한어병음 출력 
-        만일 현재 이야기에 중국어가 포함되어 있다면 중국어의 한어병음만 출력해줘. 
-        현재 이야기: {st.session_state.first_tale}
+        다음  6가지  조건으로  동화를  수정해줘.   
+ 
+        1.  현재  이야기에서  이야기의  구성에  대한  설명을  삭제해줘.   
+        2.  현재  이야기는  일반적이고  지루해.  새로운  캐릭터를  추가하여  상호작용해서  이야기를 
+        더  흥미롭게  만들  수  있어.  이야기를  더  흥미롭게  만들어줘. 
+        3.  현재  이야기는  보편적이고  따분해.  새로운  사건을  추가해  이야기를  매력적으로  만들 
+        수  있어.  이야기를  더  매력적이게  만들어줘.   
+        4.  현재  이야기에서  {{표현}}에  대해  더  강조해줘. {{표현}}과  관련된  단어의  사용을  늘려서 
+        더  강조할  수  있어.   
+        5.  현재  이야기에서  {{문화}}에  대해  더  강조해줘. {{문화}}에  대한  설명을  강화해서  더  강
+        조할  수  있어.   
+        6.  현재  이야기를  제  2언어로  출력해줘. 
+        
+        현재  이야기: {st.session_state.first_tale} 
         '''
 
     response = llm(st.session_state.prompt_add)
@@ -109,7 +96,44 @@ if st.session_state.final_tale:
                 # 텍스트 출력
                 st.write(message.content)
                 # 음성 출력
-                utils.generate_audio(message.content,select_language=st.session_state.select_language)
+                # Part3: 모델 인퍼런스
+                st.markdown("사용될 모델은 multilingual_xtts_v2.0.2 입니다.")
+                output_name = st.text_input(
+                    "TTS로 생성될 파일명을 입력하세요. \
+                    중복될 시 덮어씌워 집니다. \
+                    파일 확장자는 입력하지 않으셔도 됩니다.", 
+                    value=""
+                    )
+                tts_input = message.content
+                prompt= re.sub("([^\x00-\x7F]|\w)(\.|\。|\?)",r"\1 \2\2", tts_input)
+                button3 = st.button("Run")
+
+                if button3:
+                    # st.write(prompt)
+                    with st.spinner("변환 중..."):
+                        # 확인
+                        st.write("레퍼런스 파일: " + ", ".join(os.listdir(personal_path_inputs)))
+                        gpt_cond_latent, speaker_embedding = model.get_conditioning_latents(
+                            gpt_cond_len=30, gpt_cond_chunk_len=4, max_ref_length=60,
+                            audio_path=[
+                                personal_path_inputs + x for x in os.listdir(personal_path_inputs)
+                            ]
+                        )
+                        out = model.inference(
+                            prompt,
+                            lang_code,
+                            gpt_cond_latent,
+                            speaker_embedding,
+                            repetition_penalty=5.0,
+                            temperature=0.75,
+                        )
+                        # HTML Display
+                        st.audio(np.expand_dims(np.array(out["wav"]), 0), sample_rate=24000)
+                        # 자동 저장
+                        torchaudio.save(personal_path_outputs+f"{output_name}.wav", 
+                                        torch.tensor(out["wav"]).unsqueeze(0), 24000)
+
+                        st.success('TTS 생성 및 저장 완료')                
         # 이미지 출력
         elif message.role == "image":
             st.image(message.content,use_column_width=True)

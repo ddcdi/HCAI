@@ -1,5 +1,4 @@
 pip==24.2
-streamlit==1.37.0
 transformers==4.42.4
 langchain_core==0.2.21
 torch==2.2.2
@@ -10,3 +9,9 @@ setuptools==72.1.0
 wave==0.0.2
 SpeechRecognition==3.10.4
 pyaudio==0.2.14
+python==3.10.14
+streamlit==1.38.0
+tts==0.22.0
+ffmpeg==6.1.1
+pydub==0.25.1
+ipykernel==6.29.5

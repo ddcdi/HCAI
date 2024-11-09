@@ -1,38 +1,32 @@
 import streamlit as st
+# 페이지 설정은 반드시 다른 Streamlit 명령어보다 먼저 실행되어야 함
+st.set_page_config(layout="wide")
 import sounddevice as sd
-import wave
-import speech_recognition as sr
-from langchain.chains import LLMChain
-from langchain_community.llms import OpenAI
-import re
+import openai
+import re,os
 import utils
 
 # Streamlit 앱 제목
-st.title("다문화가정 아동 자녀 상담 챗봇")
+st.title("안녕 친구 🎈")
+
+# 컨테이너를 사용하여 채팅 영역과 입력 영역을 분리
+chat_container = st.container()
+input_container = st.container()
 
 # OpenAI API 키 설정
-openai_api_key = 'YOUR_API_KEY'
-llm = OpenAI(openai_api_key=openai_api_key, model="gpt-3.5-turbo")
+openai.api_key = os.environ["OPENAI_API_KEY"]
 
 # 사용 가능한 채널 수 확인
 device_info = sd.query_devices(kind='input')
 channels = device_info['max_input_channels']  # 사용 가능한 최대 입력 채널 수
 
+#다음 요소를 기억해: {st.session_state.parent_prefer}
 # 세션 상태 변수 초기화
-if 'messages' not in st.session_state:
-    st.session_state.messages = []
-
-if 'question_complete' not in st.session_state:
-    st.session_state.question_complete = False
-
-if 'child_prefer' not in st.session_state:
-    st.session_state.child_prefer = None
-
-# 프롬프트 초기화
-if 'prompt' not in st.session_state:
-    st.session_state.prompt = f'''
+if 'child_messages' not in st.session_state:
+    st.session_state.child_messages = []
+    st.session_state.child_messages.append({"role" : "system","content" : f'''
     너는 아동과 대화하며 친구가 되어주기 위한 챗봇이야. 
-    다음 요소를 기억해: {st.session_state.parent_prefer}
+
 
     1. 아동의 선호 요소(예: 좋아하는 음식, 캐릭터 등)를 파악해봐. 
     2. 이때 아동의 답변에서 핵심 키워드를 찾아줘.
@@ -42,40 +36,96 @@ if 'prompt' not in st.session_state:
 
     예시: {{포도, 토끼, 하늘색, 숨바꼭질, 루피}}
 
-    '''
+    '''})
+    st.session_state.child_messages.append({"role":"assistant","content":"안녕! 난 너의 다정한 친구야 나랑 같이 동화를 만들어보자!"})
 
-# 사용자 입력 처리
-if not st.session_state.question_complete :
-    # 질문이 있는 경우
-    if len(st.session_state.messages) == 0:
-        # 첫 번째 질문 생성
-        response = llm(st.session_state.prompt)
-        gpt_response = response.strip()
+if 'question_complete_child' not in st.session_state:
+    st.session_state.question_complete_child = False
+if 'child_prefer' not in st.session_state:
+    st.session_state.child_prefer = None
+if 'show_text' not in st.session_state:
+    st.session_state.show_text = False
+if 'child_input' not in st.session_state:
+    st.session_state.child_input = None
 
-        st.session_state.messages.append({"role": "assistant", "content": gpt_response})
-        with st.chat_message("assistant"):
-            st.write(gpt_response)  # 첫 번째 질문 출력
+# 채팅 영역에 메시지 표시
+with chat_container:
+    # 스크롤 가능한 영역 생성
+    with st.container():
+        for message in st.session_state.child_messages:
+            if message["role"] != "system":
+                with st.chat_message(message["role"]):
+                    st.write(message["content"])
+
+# 입력 영역을 화면 하단에 고정
+with input_container:
+    # CSS로 입력창을 하단에 고정
+    st.markdown(
+        """
+        <style>
+        .stTextInput {
+            position: fixed;
+            bottom: 3rem;
+            width: calc(100% - 4rem);
+        }
+        .stSpinner {
+            position: fixed;
+            bottom: 7rem;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+    button_child = st.button("녹음 시작!")
 
     # 음성 녹음
-    audio_file = utils.record_audio(duration=5, fs=44100, filename="output.wav")
-    if audio_file:
-        user_input = utils.recognize_speech(audio_file)
-    else :
-        user_input = st.text_input("답변을 입력해주세요! :")
-    
-    if user_input:
-        # 사용자 응답 저장
-        st.session_state.messages.append({"role": "user", "content": user_input})
+    if button_child:
+        audio_file = utils.record_audio(duration=5, fs=44100, filename="output.wav")
+        if audio_file:
+            user_audio = utils.recognize_speech(audio_file)
+            if user_audio is not None:
+                st.session_state.child_input = user_audio
+                print(f"음성 입력 받음: {st.session_state.child_input}")
+            else:
+                st.session_state.show_text = True
+        else:
+            st.write("음성을 녹음하지 못했어요...")
+            st.session_state.show_text = True
 
-        # 다음 질문 생성
-        response = llm(st.session_state.prompt + "\n" +"\n".join([msg['content'] for msg in st.session_state.messages]))
-        gpt_response = response.strip()
+    # 텍스트 입력 처리
+    if st.session_state.show_text:
+        text_input = st.text_input("음성 인식에 실패했습니다. 텍스트로 입력해주세요:", key="text_input")
+        if text_input:  # 텍스트가 입력되었을 때만
+            st.session_state.child_input = text_input
+            print(f"텍스트 입력 받음: {st.session_state.child_input}")
+            st.session_state.show_text = False
+            st.rerun()  # 화면 갱신
 
-        st.session_state.messages.append({"role": "assistant", "content": gpt_response})
+    if st.session_state.child_input is not None:
+        # 메시지 저장 및 응답 생성
+        st.session_state.child_messages.append({"role": "user", "content": st.session_state.child_input})
+        with chat_container:
+            with st.chat_message("user"):
+                st.write(st.session_state.child_input)
+        st.session_state.child_input=None
+
+        with chat_container:
+            with st.chat_message("assistant"):
+                with st.spinner("생각 중..."):
+                    llm = openai.chat.completions.create(
+                        model="gpt-4",
+                        messages=st.session_state.child_messages
+                    )
+                    gpt_response = "\n".join(llm.choices[0].message.content.strip().split('\n'))
+                    # 응답 저장
+                    st.session_state.child_messages.append({"role": "assistant", "content": gpt_response})
+                    st.write(gpt_response)
+
 
         # 답변의 마지막이 }로 끝나면 질문 완료
         if(gpt_response.strip().endswith('}')):
-            st.session_state.question_complete = True
+            st.session_state.question_complete_child = True
             # 중괄호 안의 내용 추출
             match = re.search(r'\{(.*?)\}', gpt_response.strip())
             if match:
@@ -83,13 +133,7 @@ if not st.session_state.question_complete :
                 st.session_state.child_prefer = child_prefer
                 print("결과:", st.session_state.child_prefer)
 
-        # 대화 내용 출력
-        for message in st.session_state["messages"]:
-            with st.chat_message(message.role):
-                st.write(message.content)
-
-
 # 모든 질문이 끝난 경우 결과 출력
-if st.session_state.question_complete:
+if st.session_state.question_complete_child:
     st.write("모든 질문이 완료되었습니다. 결과를 정리합니다. 다음 버튼을 눌러주세요.")
     st.page_link("pages/additional_request.py", label="완성!", icon="1️⃣")

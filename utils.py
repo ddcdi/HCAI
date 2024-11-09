@@ -7,7 +7,7 @@ from gtts import gTTS
 import sounddevice as sd
 import wave
 import speech_recognition as sr
-from streamlit_extras.let_it_rain import rain
+#from streamlit_extras.let_it_rain import rain
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

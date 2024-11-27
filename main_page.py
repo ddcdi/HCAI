@@ -4,6 +4,8 @@ st.set_page_config(layout="wide")
 from langchain.chat_models import ChatOpenAI
 import openai
 import warnings, os, re, random
+import uuid
+import utils
 from pydub import AudioSegment
 # from TTS.tts.configs.xtts_config import XttsConfig
 # from TTS.tts.models.xtts import Xtts
@@ -81,6 +83,9 @@ if 'parent_prefer' not in st.session_state:
 
 if 'select_language' not in st.session_state:
     st.session_state.select_language = False
+
+if 'session_id' not in st.session_state:
+    st.session_state.session_id = str(uuid.uuid4())
 
 # 음성에 나올 언어 선택
 if not st.session_state.select_language:
@@ -221,15 +226,9 @@ with input_container:
                     st.session_state.messages.append({"role": "assistant", "content": gpt_response})
                     st.write(gpt_response)
 
-        # 답변의 마지막이 }로 끝나면 질문 완료
-        if gpt_response.strip().endswith('}'):
-            st.session_state.question_complete = True
-            # 중괄호 안의 내용 추출
-            match = re.search(r'\{(.*?)\}', gpt_response.strip())
-            if match:
-                parent_prefer = match.group(1)  # 중괄호 안의 내용을 가져옴
-                st.session_state.parent_prefer = parent_prefer
-                print("결과:", st.session_state.parent_prefer)
+        # 질문 끝나면 선호도에 정리 부분 저장
+        utils.check_question_completion(gpt_response,st.session_state.question_complete,st.session_state.parent_prefer)
+
 
 # 모든 질문이 끝난 경우 결과 출력
 if st.session_state.question_complete:

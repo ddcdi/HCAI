@@ -3,6 +3,9 @@ import openai
 import re,os
 import json
 import utils
+import webbrowser
+import urllib.request
+import random
 
 st.title("동화생성 🎈")
 
@@ -10,10 +13,18 @@ st.title("동화생성 🎈")
 client = openai.OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
 # 세션 상태 변수 초기화
-if 'select_language' not in st.session_state:
-    st.session_state.select_language = 'zh-cn'
 if "check" not in st.session_state:
     st.session_state.check=False
+if "image_style" not in st.session_state:
+    style = ["Sebastian, children's book illustrator, Whimsical and colorful style, Medium: Watercolor, Color Scheme: Bright and lively color palette",
+                'kids illustration, oil pastel in a dreamy color pallete',
+                'kids illustration, colored pencil in a cute and adorable style',
+                'adorable storybook illustration with large pastel, a color pencil sketch inspired by Edwin Landseer',
+                'a storybook illustration by Marten Post',
+                'a storybook illustration by Walt Disney, Disney Studio presents'
+                ' cute and simple cartoon style, in a dreamy color palette '
+                ] # 그림 스타일
+    st.session_state.image_style = str(random.choice(style))
 
 # 첫번째 동화 생성
 if 'first_tale' not in st.session_state:
@@ -103,18 +114,8 @@ if 'final_tale' not in st.session_state:
         )
         gpt_response = llm_2.choices[0].message.content.strip().split('\n')
 
-    for page in gpt_response:
-        # 빈 줄 건너뛰기
-        if not page.strip():
-            continue
-
-        # ':' 를 기준으로 분리하고, 오른쪽 내용만 저장
-        parts = page.split(':', 1)
-        if len(parts) > 1:
-            content = parts[1].strip()
-            st.session_state.final_tale.append({"role": "assistant", "content": content})
-        else:
-            print(f"Warning: Unexpected format in line: {page}")
+        # final_tale에 gpt 응답 저장
+        utils.save_gpt_response(gpt_response,st.session_state.final_tale)
 
     # 언어가 중국어일 때 한어 병음 추가
     if st.session_state.select_language == 'zh-cn':
@@ -139,23 +140,8 @@ if 'final_tale' not in st.session_state:
         )
 
         gpt_response = llm_3.choices[0].message.content.strip().split('\n')
-
-        for page in gpt_response:
-            # 빈 줄 건너뛰기
-            if not page.strip():
-                continue
-
-            # 페이지 번호와 내용 분리
-            if page.startswith("페이지"):
-                parts = page.split(":", 1)
-                if len(parts) > 1:
-                    page_num = parts[0]
-                    content = parts[1].strip()
-                    st.session_state.messages_2.append({"role": "assistant", "content": f"{page_num}: {content}"})
-                else:
-                    print(f"Warning: Unexpected format in line: {page}")
-            else:
-                print(f"Warning: Line does not start with '페이지': {page}")
+        # messages_2에 gpt 응답 한어병음 저장
+        utils.save_gpt_response(gpt_response,st.session_state.messages_2)
 
 # 최종 동화 출력
 if st.session_state.final_tale:
@@ -204,17 +190,35 @@ if st.session_state.final_tale:
                 #
                 #         st.success('TTS 생성 및 저장 완료')
 
-        # 이미지 출력
-        # 여기에 이미지 생성 코드 넣으면 될 것 같습니다
-        elif message["role"] == "image":
-            st.image(message["content"],use_column_width=True)
+                # 페이지가 홀수일때(한국어일때) 이미지 생성
+                if int(message["content"].split(":")[0].split()[1]) % 2 == 1:
+                    # 이미지 출력
+                    image_url = utils.generate_image(message["content"],client=client,setting=st.session_state.image_style)
+                    if image_url:
+                        st.image(image_url,use_column_width=True)
+
+    # 한어 병음 출력
+    if "messages_2" in st.session_state:
+        for message in st.session_state.messages_2:
+            if message["role"] == "assistant":
+                with st.chat_message(message["role"]):
+                    st.write(message["content"])
 
     # 메시지를 json 파일로 저장하는 버튼
     if st.button("종료"):
         st.session_state.check = True
 
-    if st.session_state.check :
-        filename = st.session_state.session_id+".json"
-        with open(filename, 'w', encoding='utf-8') as f:
-            json.dump([utils.chat_message_to_dict(message) for message in st.session_state["messages"]], f, ensure_ascii=False, indent=4)
-        st.success("성공적으로 종료했습니다!!")
+if st.session_state.check :
+    filename = st.session_state.session_id+".json"
+    with open(filename, 'w', encoding='utf-8') as f:
+        # 모든 데이터를 합친 후 덤프
+        all_messages = []
+        all_messages.extend([utils.chat_message_to_dict(message) for message in st.session_state["final_tale"]])
+
+        # 한어병음이 있으면 한어병음 추가
+        if "messages_2" in st.session_state:
+            all_messages.extend([utils.chat_message_to_dict(message) for message in st.session_state["messages_2"]])
+
+        json.dump(all_messages, f, ensure_ascii=False, indent=4)
+
+    st.success("성공적으로 종료했습니다!!")

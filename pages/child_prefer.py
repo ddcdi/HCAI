@@ -122,16 +122,8 @@ with input_container:
                     st.session_state.child_messages.append({"role": "assistant", "content": gpt_response})
                     st.write(gpt_response)
 
-
-        # 답변의 마지막이 }로 끝나면 질문 완료
-        if(gpt_response.strip().endswith('}')):
-            st.session_state.question_complete_child = True
-            # 중괄호 안의 내용 추출
-            match = re.search(r'\{(.*?)\}', gpt_response.strip())
-            if match:
-                child_prefer = match.group(1)  # 중괄호 안의 내용을 가져옴
-                st.session_state.child_prefer = child_prefer
-                print("결과:", st.session_state.child_prefer)
+        # 질문 끝나면 선호도에 정리 부분 저장
+        utils.check_question_completion(gpt_response,st.session_state.question_complete_child,st.session_state.child_prefer)
 
 # 모든 질문이 끝난 경우 결과 출력
 if st.session_state.question_complete_child:

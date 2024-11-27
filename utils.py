@@ -7,90 +7,9 @@ from gtts import gTTS
 import sounddevice as sd
 import wave
 import speech_recognition as sr
-#from streamlit_extras.let_it_rain import rain
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-# 이전 대화 표시
-def print_messages():
-    if "messages" in st.session_state and len(st.session_state["messages"])>0 :
-        for chat_message in st.session_state["messages"]:
-            st.chat_message(chat_message.role).write(chat_message.content)
-
-# 모델과 토크나이저 로드
-def load_model():
-    model_name = "meta-llama/Meta-Llama-3-8B-Instruct"
-    HUGGING_FACE_API_TOKEN = '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'
-
-    tokenizer = AutoTokenizer.from_pretrained(
-        model_name,
-        use_auth_token=HUGGING_FACE_API_TOKEN
-    )
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name,
-        use_auth_token=HUGGING_FACE_API_TOKEN
-    ).to(device)
-    return tokenizer, model
-
-# 텍스트 생성 함수
-def generate_text(prompt, tokenizer, model):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    # 입력 텍스트 토크나이즈
-    inputs = tokenizer(prompt, return_tensors="pt").to(device)
-    print("입력 텍스트:", inputs)  # 디버깅을 위해 입력 텍스트 출력
-    try:
-        outputs = model.generate(
-            **inputs,
-            max_length=50,  # 출력 시퀀스의 최대 길이
-            num_return_sequences=1,  # 생성할 시퀀스 수
-            no_repeat_ngram_size=2,  # 반복되지 않을 n-그램 크기
-            do_sample=True,  # 샘플링 활성화
-            top_k=50,  # 상위 k개의 토큰만 고려
-            top_p=0.95  # 누적 확률이 0.95 이하인 토큰만 고려
-        )
-        print("모델 출력:", outputs)  # 디버깅을 위해 모델 출력 텍스트 출력
-        # 출력 디코딩
-        response = tokenizer.decode(outputs[0].cpu(), skip_special_tokens=True)
-        st.write("Response:")
-        st.write(response)
-        return response
-    except Exception as e:
-        print(f"모델 응답 생성 중 오류 발생: {e}")
-        return "응답을 생성하는데 실패했습니다."
-
-
-def messages_save():
-    if "messages" not in st.session_state:
-        st.session_state["messages"] = []
-
-    # 이전 대화 표시
-    for message in st.session_state["messages"]:
-        with st.chat_message(message.role):
-            st.write(message.content)
-
-# 질문 받기
-if prompt := st.chat_input("원하는 주제를 말해보세요"):
-    user_message = ChatMessage(role="user", content=prompt)
-    st.session_state["messages"].append(user_message)
-        
-    with st.chat_message("user"):
-        st.write(prompt)
-
-def main_generate(prompt):
-    # 모델 불러오기
-    if "tokenizer" not in st.session_state or "model" not in st.session_state:
-        st.session_state["tokenizer"], st.session_state["model"] = load_model()
-        
-    with st.chat_message("assistant"):
-        with st.spinner("Thinking..."):
-            response = generate_text(
-                prompt,st.session_state["tokenizer"],st.session_state["model"]
-            )
-            st.markdown(response)
-        
-    assistant_message = ChatMessage(role= "assistant", content=response)
-    st.session_state["messages"].append(assistant_message)
-
+import urllib.request
+import os
+import re
 
 # ChatMessage 객체를 딕셔너리로 변환하는 함수
 def chat_message_to_dict(chat_message):
@@ -98,22 +17,6 @@ def chat_message_to_dict(chat_message):
         "role": chat_message.role,
         "content": chat_message.content
     }
-
-def session_state_set():
-    if "check" not in st.session_state:
-        st.session_state.check = False
-
-    if "started" not in st.session_state:
-        st.session_state["started"] = False
-
-    if "prompt" not in st.session_state:
-        st.session_state.prompt = False
-
-    if "select" not in st.session_state:
-        st.session_state.select = False
-
-    if 'session_id' not in st.session_state:
-        st.session_state.session_id = str(uuid.uuid4())
 
 def language_convert(select_language):
     if select_language == "영어":
@@ -129,6 +32,7 @@ def language_convert(select_language):
         return 'ko'
     return False
 
+# text to speech 함수
 def generate_audio(response,select_language):
     # 답변 음성 파일로 재생
     if st.button("오디오 생성"):
@@ -150,7 +54,6 @@ def generate_audio(response,select_language):
             st.audio(audio_bytes, format="audio/wav")
         else:
             st.warning("재생할 동화가 없습니다.")
-
 
 # 음성 녹음 함수 정의
 def record_audio(duration=5, fs=44100, filename="output.wav"):
@@ -193,11 +96,67 @@ def save_text_to_file(text, filename="recognized_text.txt"):
         file.write(text)
     st.write(f"Text saved to {filename}")
 
-# 이모지 rain 함수
-def print_emoji(Emoji):
-    rain(
-        emoji=Emoji,
-        font_size=54,
-        falling_speed=5,
-        animation_length="infinite",
-    )
+# 이미지 생성 함수
+def generate_image(word,client,setting):
+  # 텍스트 프롬프트 설정
+  prom_word = word + "in style of" + setting  # 생성할 이미지에 대한 설명
+
+  # 이미지 생성 요청
+  response = client.images.generate(
+      model = "dall-e-3",
+      prompt=prom_word,       # 텍스트 입력
+      n=1,                    # 생성할 이미지 개수
+      size="1024x1024"        # 이미지 크기
+  )
+
+  # 생성된 이미지의 URL 출력
+  image_url = response.data[0].url
+
+  # 세션 ID별 디렉토리 생성
+  session_id = st.session_state.session_id  # Streamlit 세션 ID
+  img_dest = f"images/{session_id}"  # 세션 ID 기반 저장 경로
+  os.makedirs(img_dest, exist_ok=True)  # 디렉토리가 없으면 생성
+
+  # 고유한 파일 이름 생성
+  unique_id = str(uuid.uuid4())  # UUID로 고유 이름 생성
+  file_path = os.path.join(img_dest, f"{unique_id}.jpg")  # 최종 파일 경로
+
+  # 이미지 다운로드 및 저장
+  urllib.request.urlretrieve(image_url, file_path)
+
+  return image_url
+
+# gpt 응답 저장
+def save_gpt_response(gpt_response,text_storage):
+    for page in gpt_response:
+        # 빈 줄 건너뛰기
+        if not page.strip():
+            continue
+
+        # 페이지 번호와 내용 분리
+        if page.startswith("페이지"):
+            parts = page.split(":", 1)
+            if len(parts) > 1:
+                page_num = parts[0]
+                content = parts[1].strip()
+                text_storage.append({"role": "assistant", "content": f"{page_num}: {content}"})
+            else:
+                print(f"Warning: Unexpected format in line: {page}")
+        else:
+            print(f"Warning: Line does not start with '페이지': {page}")
+
+# 질문 확인 함수
+def check_question_completion(gpt_response,complete,prefer_storage):
+    # 응답 텍스트의 앞뒤 공백을 제거
+    response = gpt_response.strip()
+
+    # 답변에 중괄호가 들어가면 질문 완료
+    if '{' in response and '}' in response:
+        complete = True
+
+        # 중괄호 안의 내용 추출
+        match = re.search(r'\{(.*?)\}', response)
+        if match:
+            # 중괄호 안의 내용 선호도에 저장
+            prefer_storage = match.group(1)
+            print("결과:", st.session_state.parent_prefer)
